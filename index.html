@@ -27,9 +27,11 @@
     }
     body{background:var(--bg);color:var(--text);font-family:'Space Grotesk',sans-serif;overflow-x:hidden;-webkit-tap-highlight-color:transparent}
     .dm{font-family:'JetBrains Mono',monospace}
-    input::placeholder{color:var(--text-subtle)}input:focus{outline:none}
+    input::placeholder{color:var(--text-subtle)}
+    input:focus{outline:none}
     button{font-family:'Space Grotesk',sans-serif;-webkit-tap-highlight-color:transparent}
-    ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:var(--border-accent);border-radius:2px}
+    ::-webkit-scrollbar{width:3px}
+    ::-webkit-scrollbar-thumb{background:var(--border-accent);border-radius:2px}
     @keyframes floatUp{0%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-180px) scale(1.4)}}
     @keyframes slideUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
     @keyframes slideIn{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:translateX(0)}}
@@ -186,61 +188,72 @@ function renderHome(){
 }
 
 function renderPlayer(){
-  const hue=currentTrack?.hue||160;
-  const trackCards=TRACKS.map(t=>{
+  const hue=currentTrack?.hue||168;
+  const trackCards=TRACKS.map((t,i)=>{
     const on=currentTrack?.id===t.id;
-    return`<div class="trk" onclick="${isDJ?`djPlay(${t.id})`:'void(0)'}" style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;background:${on?`hsla(${t.hue},30%,15%,.6)`:'rgba(255,255,255,.02)'};border:${on?`1px solid hsla(${t.hue},40%,40%,.3)`:'1px solid transparent'};cursor:${isDJ?'pointer':'default'};transition:all .2s">
-      <div style="width:38px;height:38px;border-radius:10px;flex-shrink:0;background:linear-gradient(135deg,hsl(${t.hue} 50% 35%),hsl(${t.hue+30} 50% 25%));display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff">${on&&isPlaying?'♫':'♪'}</div>
+    return`<div class="trk" onclick="${isDJ?`djPlay(${t.id})`:'void(0)'}" style="display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:${on?`hsla(${t.hue},25%,13%,.7)`:'transparent'};border:${on?`1px solid hsla(${t.hue},40%,45%,.22)`:'1px solid transparent'};cursor:${isDJ?'pointer':'default'};animation:slideIn .4s cubic-bezier(.22,1,.36,1) ${.06+i*.05}s both">
+      <div style="width:38px;height:38px;border-radius:9px;flex-shrink:0;background:linear-gradient(135deg,hsl(${t.hue} 40% 30%),hsl(${(t.hue+35)%360} 40% 20%));display:flex;align-items:center;justify-content:center;font-size:13px;box-shadow:${on?`0 2px 14px hsla(${t.hue},50%,40%,.3)`:'none'}">${on&&isPlaying?'♫':'♪'}</div>
       <div style="flex:1;min-width:0">
-        <p style="font-size:14px;font-weight:${on?700:500};color:${on?'#eee':'#999'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.title}</p>
-        <p class="dm" style="font-size:12px;color:${on?`hsl(${t.hue} 50% 65%)`:'#555'}">${t.artist} · ${t.mood}</p>
+        <p style="font-size:14px;font-weight:${on?600:400};color:${on?'var(--text)':'var(--text-muted)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:${on?'-.2px':'0'}">${t.title}</p>
+        <p class="dm" style="font-size:11px;color:${on?`hsl(${t.hue} 50% 60%)`:'var(--text-subtle)'};margin-top:2px">${t.artist}</p>
       </div>
-      <span class="dm" style="font-size:11px;color:#444;flex-shrink:0">${t.bpm}bpm</span>
+      <span class="dm" style="font-size:11px;color:var(--text-subtle);flex-shrink:0;letter-spacing:.5px">${t.bpm}</span>
     </div>`;
   }).join('');
 
   const nowPlaying=currentTrack?`
-    <div style="background:linear-gradient(160deg,hsla(${hue},40%,12%,.8),rgba(15,15,20,.9));border:1px solid rgba(255,255,255,.06);border-radius:24px;padding:24px;margin-bottom:16px;position:relative;overflow:hidden">
-      <div style="position:absolute;top:-40px;right:-40px;width:160px;height:160px;border-radius:50%;border:2px solid hsla(${hue},60%,50%,.1);${isPlaying?'animation:spin 8s linear infinite':''}"></div>
-      <p class="dm" style="font-size:11px;color:#666;font-weight:600;letter-spacing:1.5px;margin-bottom:10px">NOW PLAYING</p>
-      <h3 style="font-size:24px;font-weight:800;margin-bottom:4px;line-height:1.2">${currentTrack.title}</h3>
-      <p class="dm" style="color:hsl(${hue} 60% 70%);font-size:14px;margin-bottom:4px">${currentTrack.artist}</p>
-      <p class="dm" style="color:#444;font-size:11px;margin-bottom:16px">${currentTrack.mood} · ${currentTrack.bpm} BPM</p>
-      <div id="visBars" style="display:flex;gap:2.5px;align-items:flex-end;height:34px"></div>
-      <div class="dm" id="elapsed" style="margin-top:12px;font-size:13px;color:#666;font-variant-numeric:tabular-nums">0:00</div>
+    <div style="background:linear-gradient(150deg,hsla(${hue},35%,12%,.9),hsla(${hue},20%,9%,.95));border:1px solid hsla(${hue},40%,50%,.12);border-radius:20px;padding:20px;margin-bottom:16px;position:relative;overflow:hidden">
+      <div style="position:absolute;top:-70px;right:-70px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,hsla(${hue},60%,50%,.1),transparent 65%);pointer-events:none"></div>
+      <p class="dm" style="font-size:10px;color:var(--text-subtle);font-weight:500;letter-spacing:2px;margin-bottom:14px">NOW PLAYING</p>
+      <div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:16px">
+        <div style="position:relative;flex-shrink:0">
+          <div style="position:absolute;inset:-7px;border-radius:50%;border:1.5px dashed hsla(${hue},55%,55%,.28);${isPlaying?'animation:spin 10s linear infinite':''}"></div>
+          <div style="width:62px;height:62px;border-radius:13px;background:linear-gradient(135deg,hsl(${hue} 45% 30%),hsl(${(hue+40)%360} 45% 20%));display:flex;align-items:center;justify-content:center;font-size:22px">${isPlaying?'♫':'♪'}</div>
+        </div>
+        <div style="flex:1;min-width:0;padding-top:2px">
+          <h3 style="font-size:clamp(18px,5vw,22px);font-weight:700;margin-bottom:4px;line-height:1.15;letter-spacing:-.4px">${currentTrack.title}</h3>
+          <p class="dm" style="color:hsl(${hue} 55% 65%);font-size:12px;margin-bottom:3px">${currentTrack.artist}</p>
+          <p class="dm" style="color:var(--text-subtle);font-size:11px">${currentTrack.mood} · ${currentTrack.bpm} bpm</p>
+        </div>
+      </div>
+      <div id="visBars" style="display:flex;gap:2.5px;align-items:flex-end;height:32px;margin-bottom:8px"></div>
+      <div class="dm" id="elapsed" style="font-size:12px;color:var(--text-subtle);font-variant-numeric:tabular-nums">0:00</div>
       ${isDJ?`
-        <div style="display:flex;justify-content:center;align-items:center;gap:24px;margin-top:16px">
-          <button onclick="djPrev()" class="btn-press" style="background:none;border:none;color:#888;font-size:22px;cursor:pointer;padding:8px">⏮</button>
-          <button onclick="djToggle()" id="playBtn" class="btn-press" style="width:58px;height:58px;border-radius:50%;background:hsl(${hue} 60% 50%);border:none;color:#fff;font-size:24px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 24px hsla(${hue},60%,40%,.35)">${isPlaying?'⏸':'▶'}</button>
-          <button onclick="djNext()" class="btn-press" style="background:none;border:none;color:#888;font-size:22px;cursor:pointer;padding:8px">⏭</button>
+        <div style="display:flex;justify-content:center;align-items:center;gap:20px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+          <button onclick="djPrev()" class="btn-press" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;padding:8px;transition:color .2s" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-muted)'">⏮</button>
+          <button onclick="djToggle()" id="playBtn" class="btn-press" style="width:54px;height:54px;border-radius:50%;background:hsl(${hue} 55% 48%);border:none;color:#fff;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 20px hsla(${hue},55%,45%,.35)">${isPlaying?'⏸':'▶'}</button>
+          <button onclick="djNext()" class="btn-press" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;padding:8px;transition:color .2s" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-muted)'">⏭</button>
         </div>`
-      :`<p class="dm" style="text-align:center;margin-top:16px;font-size:12px;color:#555">🎧 The DJ controls playback</p>`}
+      :`<p class="dm" style="text-align:center;margin-top:14px;font-size:11px;color:var(--text-subtle);letter-spacing:.3px">the dj controls playback</p>`}
     </div>`
-  :`<div style="background:rgba(255,255,255,.03);border:1px dashed rgba(255,255,255,.08);border-radius:24px;padding:40px 24px;text-align:center;margin-bottom:16px">
-      <div style="font-size:40px;margin-bottom:8px">🎧</div>
-      <p class="dm" style="color:#555;font-size:14px">${isDJ?'Pick a track below to start vibing!':'Waiting for the DJ...'}</p>
+  :`<div style="background:var(--surface);border:1px dashed var(--border-accent);border-radius:20px;padding:44px 24px;text-align:center;margin-bottom:16px">
+      <div style="width:44px;height:44px;border-radius:11px;background:var(--surface-raised);display:flex;align-items:center;justify-content:center;font-size:20px;margin:0 auto 12px">♪</div>
+      <p class="dm" style="color:var(--text-subtle);font-size:11px;letter-spacing:.3px">${isDJ?'tap a track to start the session':'waiting for the dj...'}</p>
     </div>`;
 
-  const reactionBtns=REACTIONS.map(e=>`<button onclick="sendReaction('${e}')" class="btn-press" style="width:42px;height:42px;border-radius:12px;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.04);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center">${e}</button>`).join('');
+  const reactionBtns=REACTIONS.map(e=>`<button onclick="sendReaction('${e}')" class="btn-press" style="width:40px;height:40px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:border-color .2s,background .2s" onmouseover="this.style.borderColor='var(--border-accent)';this.style.background='var(--surface-raised)'" onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--surface)'">${e}</button>`).join('');
 
   $('app').innerHTML=`
-  <div style="position:fixed;inset:0;background:radial-gradient(ellipse at 50% 30%,hsla(${hue},60%,12%,.5),transparent 70%);pointer-events:none;transition:background 1.5s"></div>
-  <div style="display:flex;flex-direction:column;min-height:100dvh;padding:16px 16px 32px;max-width:480px;margin:0 auto;animation:slideUp .5s ease-out;position:relative;z-index:1">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <h2 style="font-size:20px;font-weight:800;background:linear-gradient(135deg,#b4ff32,#32ffc8);-webkit-background-clip:text;-webkit-text-fill-color:transparent">ThirdBud</h2>
-      <button onclick="copyCode()" class="btn-press" style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:7px 12px;cursor:pointer;color:#aaa;font-size:13px;font-weight:600;letter-spacing:1.5px">
-        <span>${roomCode}</span><span id="copyIcon" style="font-size:11px;color:#555">⎘</span>
+  <div style="position:fixed;inset:0;background:radial-gradient(ellipse 80% 55% at 50% 0%,hsla(${hue},45%,12%,.45),transparent 65%);pointer-events:none;transition:background 1.5s;z-index:0"></div>
+  <div style="display:flex;flex-direction:column;min-height:100dvh;padding:16px 16px 32px;max-width:480px;margin:0 auto;animation:slideUp .5s cubic-bezier(.22,1,.36,1) both;position:relative;z-index:1">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:18px;height:2px;background:var(--accent);border-radius:1px"></div>
+        <h2 style="font-size:16px;font-weight:600;letter-spacing:-.3px">ThirdBud</h2>
+      </div>
+      <button onclick="copyCode()" class="btn-press" style="display:flex;align-items:center;gap:7px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 12px;cursor:pointer;color:var(--text-muted);font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;letter-spacing:2px;transition:border-color .2s,color .2s" onmouseover="this.style.borderColor='var(--border-accent)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">
+        ${roomCode}<span id="copyIcon" style="font-size:10px;color:var(--text-subtle);margin-left:2px">⎘</span>
       </button>
     </div>
-    <div id="membersList" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px"></div>
+    <div id="membersList" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px"></div>
     ${nowPlaying}
-    <div id="rxnFloat" style="position:relative;height:48px;margin-bottom:8px"></div>
+    <div id="rxnFloat" style="position:relative;height:48px;margin-bottom:6px"></div>
     <div style="display:flex;gap:6px;justify-content:center;margin-bottom:24px;flex-wrap:wrap">${reactionBtns}</div>
     <div>
-      <p class="dm" style="font-size:11px;color:#444;font-weight:600;letter-spacing:1.5px;margin-bottom:10px">${isDJ?'QUEUE — TAP TO PLAY':'TRACKLIST'}</p>
-      <div style="display:flex;flex-direction:column;gap:4px">${trackCards}</div>
+      <p class="dm" style="font-size:10px;color:var(--text-subtle);font-weight:500;letter-spacing:2px;margin-bottom:10px">${isDJ?'QUEUE':'TRACKLIST'}</p>
+      <div style="display:flex;flex-direction:column;gap:3px">${trackCards}</div>
     </div>
-    <p class="dm" style="text-align:center;margin-top:32px;font-size:11px;color:#333">share code <span style="color:#555;font-weight:600;letter-spacing:1px">${roomCode}</span> with your friends</p>
+    <p class="dm" style="text-align:center;margin-top:28px;font-size:10px;color:var(--text-subtle);letter-spacing:.5px">share <span style="color:var(--text-muted)">${roomCode}</span> with friends</p>
   </div>`;
 
   startVisBars();
@@ -253,13 +266,13 @@ let visInterval=null;
 function startVisBars(){
   clearInterval(visInterval);
   const el=$('visBars');if(!el)return;
-  el.innerHTML=Array(18).fill(0).map(()=>`<div style="width:3px;border-radius:2px;background:hsl(${currentTrack?.hue||160} 80% 65%);height:4px;transition:height .13s;opacity:.25"></div>`).join('');
+  el.innerHTML=Array(20).fill(0).map(()=>`<div style="width:2.5px;border-radius:2px;background:hsl(${currentTrack?.hue||168} 65% 58%);height:3px;transition:height .13s ease;opacity:.2"></div>`).join('');
   visInterval=setInterval(()=>{
     if(!el)return;
     const bars=el.children;
     for(let i=0;i<bars.length;i++){
-      bars[i].style.height=isPlaying?`${4+Math.random()*26}px`:'4px';
-      bars[i].style.opacity=isPlaying?'.85':'.25';
+      bars[i].style.height=isPlaying?`${3+Math.random()*26}px`:'3px';
+      bars[i].style.opacity=isPlaying?'.8':'.2';
     }
   },130);
 }
@@ -284,10 +297,10 @@ function updateMembers(mems){
 }
 
 function pill(name,avatar,dj){
-  return`<div style="display:inline-flex;align-items:center;gap:6px;background:${dj?'rgba(180,255,50,.12)':'rgba(255,255,255,.06)'};border:${dj?'1px solid rgba(180,255,50,.3)':'1px solid rgba(255,255,255,.08)'};border-radius:20px;padding:5px 12px 5px 8px;font-size:13px">
-    <span style="font-size:16px">${avatar}</span>
-    <span style="color:${dj?'#b4ff32':'#aaa'};font-weight:${dj?600:400}">${name}</span>
-    ${dj?'<span style="font-size:9px;background:#b4ff32;color:#111;border-radius:4px;padding:1px 5px;font-weight:700;letter-spacing:.5px">DJ</span>':''}
+  return`<div style="display:inline-flex;align-items:center;gap:6px;background:${dj?'var(--accent-dim)':'var(--surface)'};border:1px solid ${dj?'hsla(24,90%,62%,.22)':'var(--border)'};border-radius:8px;padding:5px 10px 5px 7px;font-size:13px">
+    <span style="font-size:14px">${avatar}</span>
+    <span style="color:${dj?'var(--accent)':'var(--text-muted)'};font-weight:${dj?500:400}">${name}</span>
+    ${dj?'<span class="dm" style="font-size:9px;background:var(--accent);color:hsl(222,18%,8%);border-radius:3px;padding:1px 5px;font-weight:600;letter-spacing:.8px;margin-left:1px">DJ</span>':''}
   </div>`;
 }
 
@@ -376,7 +389,7 @@ function cycleAvatar(){
 
 function copyCode(){
   navigator.clipboard?.writeText(roomCode);
-  const el=$('copyIcon');if(el){el.textContent='✓';el.style.color='#b4ff32';setTimeout(()=>{el.textContent='⎘';el.style.color='#555';},1500);}
+  const el=$('copyIcon');if(el){el.textContent='✓';el.style.color='var(--accent)';setTimeout(()=>{el.textContent='⎘';el.style.color='var(--text-subtle)';},1500);}
 }
 
 // ━━━ DJ CONTROLS ━━━
