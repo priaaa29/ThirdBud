@@ -5,24 +5,40 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
   <title>ThirdBud — Sync Music With Friends</title>
   <meta name="description" content="When there's only two earbuds but three friends"/>
-  <meta name="theme-color" content="#0a0a0f"/>
+  <meta name="theme-color" content="#0d0f17"/>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎧</text></svg>"/>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     html,body{min-height:100vh;min-height:100dvh}
-    body{background:#0a0a0f;color:#eee;font-family:'Outfit',sans-serif;overflow-x:hidden;-webkit-tap-highlight-color:transparent}
-    .dm{font-family:'DM Sans',sans-serif}
-    input::placeholder{color:#555}input:focus{outline:none}
-    button{font-family:'Outfit',sans-serif;-webkit-tap-highlight-color:transparent}
-    ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:4px}
+    :root{
+      --bg:hsl(222,18%,7%);
+      --surface:hsl(222,14%,11%);
+      --surface-raised:hsl(222,12%,16%);
+      --border:hsla(0,0%,100%,.06);
+      --border-accent:hsla(0,0%,100%,.13);
+      --text:hsl(220,20%,90%);
+      --text-muted:hsl(220,8%,50%);
+      --text-subtle:hsl(220,5%,26%);
+      --accent:hsl(24,90%,62%);
+      --accent-dim:hsla(24,90%,62%,.12);
+      --teal:hsl(168,72%,50%);
+      --teal-dim:hsla(168,72%,50%,.1);
+    }
+    body{background:var(--bg);color:var(--text);font-family:'Space Grotesk',sans-serif;overflow-x:hidden;-webkit-tap-highlight-color:transparent}
+    .dm{font-family:'JetBrains Mono',monospace}
+    input::placeholder{color:var(--text-subtle)}input:focus{outline:none}
+    button{font-family:'Space Grotesk',sans-serif;-webkit-tap-highlight-color:transparent}
+    ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:var(--border-accent);border-radius:2px}
     @keyframes floatUp{0%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-180px) scale(1.4)}}
-    @keyframes slideUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes slideUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes slideIn{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:translateX(0)}}
     @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
-    @keyframes fadePulse{0%,100%{opacity:.5}50%{opacity:1}}
-    .btn-press{transition:transform .12s}
-    .btn-press:active{transform:scale(.95)!important}
-    @media(hover:hover){.trk:hover{background:rgba(255,255,255,.05)!important}}
+    @keyframes fadePulse{0%,100%{opacity:.4}50%{opacity:1}}
+    .btn-press{transition:transform .12s,opacity .15s}
+    .btn-press:active{transform:scale(.94)!important}
+    .trk{transition:background .18s,border-color .18s,transform .2s}
+    @media(hover:hover){.trk:hover{background:var(--surface-raised)!important;border-color:var(--border-accent)!important;transform:translateX(3px)}}
   </style>
 </head>
 <body>
@@ -143,7 +159,7 @@ function renderHome(){
 
     <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;width:100%;max-width:340px">
       <div id="avatarBtn" onclick="cycleAvatar()" style="font-size:28px;width:50px;height:50px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.06);border-radius:14px;cursor:pointer;border:1px solid rgba(255,255,255,.08);flex-shrink:0">${myAvatar}</div>
-      <input id="nameInput" value="${myName}" placeholder="Your name" maxlength="16" style="flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px 16px;color:#eee;font-size:15px;font-family:'DM Sans',sans-serif"/>
+      <input id="nameInput" value="${myName}" placeholder="Your name" maxlength="16" style="flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px 16px;color:#eee;font-size:15px;font-family:'Space Grotesk',sans-serif"/>
     </div>
 
     <button onclick="createRoom()" class="btn-press" style="width:100%;max-width:340px;padding:16px 0;border-radius:16px;background:linear-gradient(135deg,#b4ff32,#32ffc8);border:none;color:#0a0a0f;font-size:16px;font-weight:700;cursor:pointer;letter-spacing:.3px;box-shadow:0 4px 24px rgba(180,255,50,.2)">Create a Room</button>
@@ -155,7 +171,7 @@ function renderHome(){
     </div>
 
     <div style="display:flex;gap:10px;width:100%;max-width:340px">
-      <input id="joinInput" placeholder="ROOM CODE" maxlength="5" style="flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px 16px;color:#eee;font-size:16px;font-family:'Outfit',sans-serif;letter-spacing:3px;text-align:center;font-weight:600;text-transform:uppercase"/>
+      <input id="joinInput" placeholder="ROOM CODE" maxlength="5" style="flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px 16px;color:#eee;font-size:16px;font-family:'JetBrains Mono',monospace;letter-spacing:3px;text-align:center;font-weight:600;text-transform:uppercase"/>
       <button onclick="joinRoom()" class="btn-press" style="padding:14px 24px;border-radius:14px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);color:#eee;font-size:15px;font-weight:600;cursor:pointer">Join</button>
     </div>
 
