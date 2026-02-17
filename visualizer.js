@@ -1,0 +1,2 @@
+let visInterval=null;
+function startVisBars(){clearInterval(visInterval);const el=document.getElementById("visBars");if(!el)return;el.innerHTML=Array(18).fill(0).map(()=>"<div style='width:3px;border-radius:2px;height:4px;transition:height .13s'></div>").join("");visInterval=setInterval(()=>{for(let i=0;i<el.children.length;i++){el.children[i].style.height=isPlaying?(4+Math.random()*26)+"px":"4px"}},130)}
