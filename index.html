@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
   <title>ThirdBud — Sync Music With Friends</title>
+  <meta name="description" content="When there's only two earbuds but three friends"/>
   <meta name="theme-color" content="#0a0a0f"/>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎧</text></svg>"/>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet"/>
@@ -12,15 +14,383 @@
     body{background:#0a0a0f;color:#eee;font-family:'Outfit',sans-serif;overflow-x:hidden;-webkit-tap-highlight-color:transparent}
     .dm{font-family:'DM Sans',sans-serif}
     input::placeholder{color:#555}input:focus{outline:none}
-    button{font-family:'Outfit',sans-serif}
+    button{font-family:'Outfit',sans-serif;-webkit-tap-highlight-color:transparent}
     ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:4px}
     @keyframes floatUp{0%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-180px) scale(1.4)}}
     @keyframes slideUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
     @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
     @keyframes fadePulse{0%,100%{opacity:.5}50%{opacity:1}}
-    .btn-press{transition:transform .12s}.btn-press:active{transform:scale(.95)!important}
+    .btn-press{transition:transform .12s}
+    .btn-press:active{transform:scale(.95)!important}
     @media(hover:hover){.trk:hover{background:rgba(255,255,255,.05)!important}}
   </style>
 </head>
-<body><div id="app"></div></body>
+<body>
+<div id="app"></div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+
+<!-- Tone.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+
+<script>
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 🔥 FIREBASE — YOUR CONFIG
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const fbApp = firebase.initializeApp({
+  apiKey: "AIzaSyDhyNCUzkguOQdnnkPpvUmd4LqxkSADDhc",
+  authDomain: "thirdbud.firebaseapp.com",
+  databaseURL: "https://thirdbud-default-rtdb.firebaseio.com",
+  projectId: "thirdbud"
+});
+const db = firebase.database();
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// SYNC ENGINE (Firebase Realtime DB)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const Sync = {
+  _refs: [],
+  init(code) { this.code = code; },
+  ref(path) { return db.ref(`rooms/${this.code}/${path}`); },
+  async write(path, val) { await this.ref(path).set(val); },
+  async read(path) { const snap = await this.ref(path).get(); return snap.exists() ? snap.val() : null; },
+  listen(path, cb) {
+    const r = this.ref(path);
+    r.on('value', snap => { if(snap.exists()) cb(snap.val()); });
+    this._refs.push(r);
+  },
+  destroy() { this._refs.forEach(r => r.off()); this._refs = []; }
+};
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// MUSIC ENGINE (Tone.js)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const SCALES = {
+  pentatonic:["C4","D4","E4","G4","A4","C5","D5","E5"],
+  minor:["A3","B3","C4","D4","E4","F4","G4","A4","B4","C5"],
+  major:["C4","D4","E4","F4","G4","A4","B4","C5"],
+  lofi:["D3","F3","G3","A3","C4","D4","F4","G4","A4"],
+  dreamy:["E3","G3","A3","B3","D4","E4","G4","A4","B4"],
+  chill:["C3","Eb3","F3","G3","Bb3","C4","Eb4","F4"]
+};
+
+const TRACKS = [
+  {id:1,title:"Neon Pulse",artist:"SynthBot",hue:160,scale:"pentatonic",bpm:110,wave:"triangle",mood:"bright"},
+  {id:2,title:"Midnight Lo-Fi",artist:"ChillWave",hue:280,scale:"lofi",bpm:75,wave:"sine",mood:"mellow"},
+  {id:3,title:"Golden Hour",artist:"Sunset FM",hue:30,scale:"major",bpm:100,wave:"square",mood:"warm"},
+  {id:4,title:"Deep Blue",artist:"Ocean.wav",hue:200,scale:"dreamy",bpm:85,wave:"sawtooth",mood:"ambient"},
+  {id:5,title:"After Dark",artist:"Night Shift",hue:340,scale:"minor",bpm:120,wave:"triangle",mood:"dark"},
+  {id:6,title:"Velvet Haze",artist:"Cloud Nine",hue:50,scale:"chill",bpm:90,wave:"sine",mood:"dreamy"}
+];
+
+let activeSynth=null, activeSeq=null, activeEffects=[], toneReady=false;
+
+async function initTone(){if(toneReady)return;await Tone.start();toneReady=true;}
+
+function stopMusic(){
+  Tone.Transport.stop();Tone.Transport.cancel();
+  if(activeSeq){activeSeq.stop();activeSeq.dispose();activeSeq=null;}
+  if(activeSynth){activeSynth.dispose();activeSynth=null;}
+  activeEffects.forEach(e=>e.dispose());activeEffects=[];
+}
+
+async function startMusic(track){
+  await initTone(); stopMusic();
+  Tone.Transport.bpm.value=track.bpm;
+  const rev=new Tone.Reverb({decay:3.5,wet:.35}).toDestination();
+  const del=new Tone.FeedbackDelay("8n.",.25).connect(rev);del.wet.value=.2;
+  const cho=new Tone.Chorus(4,2.5,.5).connect(del);cho.start();
+  activeEffects=[rev,del,cho];
+  activeSynth=new Tone.PolySynth(Tone.Synth,{oscillator:{type:track.wave},envelope:{attack:.08,decay:.25,sustain:.5,release:1.5},volume:-14}).connect(cho);
+  // deterministic melody from track id
+  const scale=SCALES[track.scale];let seed=track.id*7919;
+  const rng=()=>{seed=(seed*16807)%2147483647;return(seed-1)/2147483646;};
+  const pat=[];for(let i=0;i<32;i++){pat.push(rng()>.25?scale[Math.floor(rng()*scale.length)]:null);}
+  activeSeq=new Tone.Sequence((time,note)=>{if(note&&activeSynth)activeSynth.triggerAttackRelease(note,rng()>.5?"8n":"4n",time);},pat,"8n");
+  activeSeq.loop=true;activeSeq.start(0);Tone.Transport.start();
+}
+
+function pauseMusic(){Tone.Transport.pause();}
+function resumeMusic(){Tone.Transport.start();}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// UI (vanilla JS — no React needed)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const REACTIONS=["🔥","💜","🎶","✨","🤘","💃","🫠","⚡"];
+const AVATARS=["👾","🎧","🎵","🌊","🦊","🐱","🎸","🌙"];
+const fmt=s=>`${Math.floor(s/60)}:${Math.floor(s%60).toString().padStart(2,"0")}`;
+const genCode=()=>Math.random().toString(36).substring(2,7).toUpperCase();
+const $=id=>document.getElementById(id);
+const myId=`m_${Date.now()}_${Math.random().toString(36).slice(2,6)}`;
+let myName="",myAvatar=AVATARS[Math.floor(Math.random()*AVATARS.length)],isDJ=false,roomCode="";
+let currentTrack=null,isPlaying=false,lastTrackId=null;
+let hbInterval=null,elInterval=null;
+
+function renderHome(){
+  $('app').innerHTML=`
+  <div style="position:fixed;inset:0;background:radial-gradient(ellipse at 50% 30%,hsla(160,60%,12%,.5),transparent 70%);pointer-events:none"></div>
+  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100dvh;padding:24px;animation:slideUp .6s ease-out;position:relative;z-index:1">
+    <div style="font-size:52px;margin-bottom:8px;line-height:1">🎧</div>
+    <h1 style="font-size:clamp(38px,10vw,50px);font-weight:900;letter-spacing:-1.5px;background:linear-gradient(135deg,#b4ff32,#32ffc8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px">ThirdBud</h1>
+    <p class="dm" style="color:#555;font-size:14px;margin-bottom:44px;text-align:center">when there's only two earbuds but three friends</p>
+
+    <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(50,255,200,.08);border:1px solid rgba(50,255,200,.2);border-radius:20px;padding:4px 14px;margin-bottom:28px;font-size:12px;color:#32ffc8">
+      <span style="width:6px;height:6px;border-radius:50%;background:currentColor;animation:fadePulse 2s infinite"></span>
+      Cross-device sync enabled
+    </div>
+
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;width:100%;max-width:340px">
+      <div id="avatarBtn" onclick="cycleAvatar()" style="font-size:28px;width:50px;height:50px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.06);border-radius:14px;cursor:pointer;border:1px solid rgba(255,255,255,.08);flex-shrink:0">${myAvatar}</div>
+      <input id="nameInput" value="${myName}" placeholder="Your name" maxlength="16" style="flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px 16px;color:#eee;font-size:15px;font-family:'DM Sans',sans-serif"/>
+    </div>
+
+    <button onclick="createRoom()" class="btn-press" style="width:100%;max-width:340px;padding:16px 0;border-radius:16px;background:linear-gradient(135deg,#b4ff32,#32ffc8);border:none;color:#0a0a0f;font-size:16px;font-weight:700;cursor:pointer;letter-spacing:.3px;box-shadow:0 4px 24px rgba(180,255,50,.2)">Create a Room</button>
+
+    <div style="display:flex;align-items:center;gap:12px;margin:22px 0;width:100%;max-width:340px">
+      <div style="flex:1;height:1px;background:rgba(255,255,255,.08)"></div>
+      <span class="dm" style="color:#444;font-size:12px">or join a friend</span>
+      <div style="flex:1;height:1px;background:rgba(255,255,255,.08)"></div>
+    </div>
+
+    <div style="display:flex;gap:10px;width:100%;max-width:340px">
+      <input id="joinInput" placeholder="ROOM CODE" maxlength="5" style="flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px 16px;color:#eee;font-size:16px;font-family:'Outfit',sans-serif;letter-spacing:3px;text-align:center;font-weight:600;text-transform:uppercase"/>
+      <button onclick="joinRoom()" class="btn-press" style="padding:14px 24px;border-radius:14px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);color:#eee;font-size:15px;font-weight:600;cursor:pointer">Join</button>
+    </div>
+
+    <p id="homeErr" class="dm" style="color:#ff6b6b;margin-top:14px;font-size:13px;display:none"></p>
+    <p class="dm" style="color:#333;font-size:11px;margin-top:40px;text-align:center">tap anywhere first to enable audio on mobile</p>
+  </div>`;
+  document.body.onclick=()=>{initTone();document.body.onclick=null;};
+}
+
+function renderPlayer(){
+  const hue=currentTrack?.hue||160;
+  const trackCards=TRACKS.map(t=>{
+    const on=currentTrack?.id===t.id;
+    return`<div class="trk" onclick="${isDJ?`djPlay(${t.id})`:'void(0)'}" style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;background:${on?`hsla(${t.hue},30%,15%,.6)`:'rgba(255,255,255,.02)'};border:${on?`1px solid hsla(${t.hue},40%,40%,.3)`:'1px solid transparent'};cursor:${isDJ?'pointer':'default'};transition:all .2s">
+      <div style="width:38px;height:38px;border-radius:10px;flex-shrink:0;background:linear-gradient(135deg,hsl(${t.hue} 50% 35%),hsl(${t.hue+30} 50% 25%));display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff">${on&&isPlaying?'♫':'♪'}</div>
+      <div style="flex:1;min-width:0">
+        <p style="font-size:14px;font-weight:${on?700:500};color:${on?'#eee':'#999'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.title}</p>
+        <p class="dm" style="font-size:12px;color:${on?`hsl(${t.hue} 50% 65%)`:'#555'}">${t.artist} · ${t.mood}</p>
+      </div>
+      <span class="dm" style="font-size:11px;color:#444;flex-shrink:0">${t.bpm}bpm</span>
+    </div>`;
+  }).join('');
+
+  const nowPlaying=currentTrack?`
+    <div style="background:linear-gradient(160deg,hsla(${hue},40%,12%,.8),rgba(15,15,20,.9));border:1px solid rgba(255,255,255,.06);border-radius:24px;padding:24px;margin-bottom:16px;position:relative;overflow:hidden">
+      <div style="position:absolute;top:-40px;right:-40px;width:160px;height:160px;border-radius:50%;border:2px solid hsla(${hue},60%,50%,.1);${isPlaying?'animation:spin 8s linear infinite':''}"></div>
+      <p class="dm" style="font-size:11px;color:#666;font-weight:600;letter-spacing:1.5px;margin-bottom:10px">NOW PLAYING</p>
+      <h3 style="font-size:24px;font-weight:800;margin-bottom:4px;line-height:1.2">${currentTrack.title}</h3>
+      <p class="dm" style="color:hsl(${hue} 60% 70%);font-size:14px;margin-bottom:4px">${currentTrack.artist}</p>
+      <p class="dm" style="color:#444;font-size:11px;margin-bottom:16px">${currentTrack.mood} · ${currentTrack.bpm} BPM</p>
+      <div id="visBars" style="display:flex;gap:2.5px;align-items:flex-end;height:34px"></div>
+      <div class="dm" id="elapsed" style="margin-top:12px;font-size:13px;color:#666;font-variant-numeric:tabular-nums">0:00</div>
+      ${isDJ?`
+        <div style="display:flex;justify-content:center;align-items:center;gap:24px;margin-top:16px">
+          <button onclick="djPrev()" class="btn-press" style="background:none;border:none;color:#888;font-size:22px;cursor:pointer;padding:8px">⏮</button>
+          <button onclick="djToggle()" id="playBtn" class="btn-press" style="width:58px;height:58px;border-radius:50%;background:hsl(${hue} 60% 50%);border:none;color:#fff;font-size:24px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 24px hsla(${hue},60%,40%,.35)">${isPlaying?'⏸':'▶'}</button>
+          <button onclick="djNext()" class="btn-press" style="background:none;border:none;color:#888;font-size:22px;cursor:pointer;padding:8px">⏭</button>
+        </div>`
+      :`<p class="dm" style="text-align:center;margin-top:16px;font-size:12px;color:#555">🎧 The DJ controls playback</p>`}
+    </div>`
+  :`<div style="background:rgba(255,255,255,.03);border:1px dashed rgba(255,255,255,.08);border-radius:24px;padding:40px 24px;text-align:center;margin-bottom:16px">
+      <div style="font-size:40px;margin-bottom:8px">🎧</div>
+      <p class="dm" style="color:#555;font-size:14px">${isDJ?'Pick a track below to start vibing!':'Waiting for the DJ...'}</p>
+    </div>`;
+
+  const reactionBtns=REACTIONS.map(e=>`<button onclick="sendReaction('${e}')" class="btn-press" style="width:42px;height:42px;border-radius:12px;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.04);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center">${e}</button>`).join('');
+
+  $('app').innerHTML=`
+  <div style="position:fixed;inset:0;background:radial-gradient(ellipse at 50% 30%,hsla(${hue},60%,12%,.5),transparent 70%);pointer-events:none;transition:background 1.5s"></div>
+  <div style="display:flex;flex-direction:column;min-height:100dvh;padding:16px 16px 32px;max-width:480px;margin:0 auto;animation:slideUp .5s ease-out;position:relative;z-index:1">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h2 style="font-size:20px;font-weight:800;background:linear-gradient(135deg,#b4ff32,#32ffc8);-webkit-background-clip:text;-webkit-text-fill-color:transparent">ThirdBud</h2>
+      <button onclick="copyCode()" class="btn-press" style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:7px 12px;cursor:pointer;color:#aaa;font-size:13px;font-weight:600;letter-spacing:1.5px">
+        <span>${roomCode}</span><span id="copyIcon" style="font-size:11px;color:#555">⎘</span>
+      </button>
+    </div>
+    <div id="membersList" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px"></div>
+    ${nowPlaying}
+    <div id="rxnFloat" style="position:relative;height:48px;margin-bottom:8px"></div>
+    <div style="display:flex;gap:6px;justify-content:center;margin-bottom:24px;flex-wrap:wrap">${reactionBtns}</div>
+    <div>
+      <p class="dm" style="font-size:11px;color:#444;font-weight:600;letter-spacing:1.5px;margin-bottom:10px">${isDJ?'QUEUE — TAP TO PLAY':'TRACKLIST'}</p>
+      <div style="display:flex;flex-direction:column;gap:4px">${trackCards}</div>
+    </div>
+    <p class="dm" style="text-align:center;margin-top:32px;font-size:11px;color:#333">share code <span style="color:#555;font-weight:600;letter-spacing:1px">${roomCode}</span> with your friends</p>
+  </div>`;
+
+  startVisBars();
+  startElapsed();
+  updateMembers();
+}
+
+// ━━━ VIS BARS ━━━
+let visInterval=null;
+function startVisBars(){
+  clearInterval(visInterval);
+  const el=$('visBars');if(!el)return;
+  el.innerHTML=Array(18).fill(0).map(()=>`<div style="width:3px;border-radius:2px;background:hsl(${currentTrack?.hue||160} 80% 65%);height:4px;transition:height .13s;opacity:.25"></div>`).join('');
+  visInterval=setInterval(()=>{
+    if(!el)return;
+    const bars=el.children;
+    for(let i=0;i<bars.length;i++){
+      bars[i].style.height=isPlaying?`${4+Math.random()*26}px`:'4px';
+      bars[i].style.opacity=isPlaying?'.85':'.25';
+    }
+  },130);
+}
+
+// ━━━ ELAPSED ━━━
+function startElapsed(){
+  clearInterval(elInterval);
+  elInterval=setInterval(()=>{
+    const el=$('elapsed');
+    if(el&&isPlaying)el.textContent=fmt(Tone.Transport.seconds);
+  },250);
+}
+
+// ━━━ MEMBERS ━━━
+function updateMembers(mems){
+  const el=$('membersList');if(!el)return;
+  const all=mems?Object.values(mems).filter(m=>Date.now()-m.ls<15000):[];
+  // always show self first
+  let html=pill(myName,myAvatar,isDJ);
+  all.filter(m=>m.id!==myId).forEach(m=>{html+=pill(m.name,m.avatar,m.isDJ);});
+  el.innerHTML=html;
+}
+
+function pill(name,avatar,dj){
+  return`<div style="display:inline-flex;align-items:center;gap:6px;background:${dj?'rgba(180,255,50,.12)':'rgba(255,255,255,.06)'};border:${dj?'1px solid rgba(180,255,50,.3)':'1px solid rgba(255,255,255,.08)'};border-radius:20px;padding:5px 12px 5px 8px;font-size:13px">
+    <span style="font-size:16px">${avatar}</span>
+    <span style="color:${dj?'#b4ff32':'#aaa'};font-weight:${dj?600:400}">${name}</span>
+    ${dj?'<span style="font-size:9px;background:#b4ff32;color:#111;border-radius:4px;padding:1px 5px;font-weight:700;letter-spacing:.5px">DJ</span>':''}
+  </div>`;
+}
+
+// ━━━ REACTIONS ━━━
+function showReactions(rxns){
+  const el=$('rxnFloat');if(!el)return;
+  const vals=rxns?Object.values(rxns).filter(r=>Date.now()-r.ts<3000):[];
+  el.innerHTML=vals.map(r=>`<div style="position:absolute;bottom:0;left:${r.x}%;font-size:28px;pointer-events:none;animation:floatUp 2s ease-out forwards">${r.emoji}</div>`).join('');
+}
+
+// ━━━ ROOM ACTIONS ━━━
+async function createRoom(){
+  myName=($('nameInput')?.value||'').trim();
+  if(!myName){showErr("Enter your name first!");return;}
+  roomCode=genCode();isDJ=true;
+  Sync.init(roomCode);
+  await Sync.write('state',{trackId:null,playing:false,at:0});
+  await Sync.write('members',{});
+  await Sync.write('reactions',{});
+  enterRoom();
+}
+
+async function joinRoom(){
+  myName=($('nameInput')?.value||'').trim();
+  const code=($('joinInput')?.value||'').trim().toUpperCase();
+  if(!myName){showErr("Enter your name first!");return;}
+  if(!code){showErr("Enter a room code!");return;}
+  Sync.init(code);
+  const state=await Sync.read('state');
+  if(state===null){showErr("Room not found — check the code!");return;}
+  roomCode=code;isDJ=false;
+  enterRoom();
+}
+
+function enterRoom(){
+  renderPlayer();
+
+  // listen for state
+  Sync.listen('state',async(state)=>{
+    if(!state)return;
+    const t=state.trackId?TRACKS.find(x=>x.id===state.trackId):null;
+    const wasPlaying=isPlaying;
+    const wasTrack=currentTrack?.id;
+    currentTrack=t;isPlaying=state.playing;
+
+    if(t&&lastTrackId!==t.id){
+      lastTrackId=t.id;
+      if(state.playing)await startMusic(t);
+    }else if(state.playing&&Tone.Transport.state!=='started'){
+      if(t)resumeMusic();
+    }else if(!state.playing&&Tone.Transport.state==='started'){
+      pauseMusic();
+    }
+
+    // only re-render if something visual changed
+    if(wasTrack!==currentTrack?.id||wasPlaying!==isPlaying) renderPlayer();
+  });
+
+  // listen for members
+  Sync.listen('members',(mems)=>updateMembers(mems));
+
+  // listen for reactions
+  Sync.listen('reactions',(rxns)=>showReactions(rxns));
+
+  // heartbeat
+  clearInterval(hbInterval);
+  const beat=async()=>{
+    const mems=(await Sync.read('members'))||{};
+    mems[myId]={name:myName,avatar:myAvatar,isDJ,ls:Date.now(),id:myId};
+    await Sync.write('members',mems);
+  };
+  beat();
+  hbInterval=setInterval(beat,3000);
+}
+
+function showErr(msg){
+  const el=$('homeErr');
+  if(el){el.textContent=msg;el.style.display='block';}
+}
+
+function cycleAvatar(){
+  const i=(AVATARS.indexOf(myAvatar)+1)%AVATARS.length;
+  myAvatar=AVATARS[i];
+  const el=$('avatarBtn');if(el)el.textContent=myAvatar;
+}
+
+function copyCode(){
+  navigator.clipboard?.writeText(roomCode);
+  const el=$('copyIcon');if(el){el.textContent='✓';el.style.color='#b4ff32';setTimeout(()=>{el.textContent='⎘';el.style.color='#555';},1500);}
+}
+
+// ━━━ DJ CONTROLS ━━━
+async function djPlay(id){
+  if(!isDJ)return;await initTone();
+  await Sync.write('state',{trackId:id,playing:true,at:Date.now()});
+}
+async function djToggle(){
+  if(!isDJ)return;await initTone();
+  const s=await Sync.read('state');if(!s)return;
+  s.playing=!s.playing;if(s.playing)s.at=Date.now();
+  await Sync.write('state',s);
+}
+async function djNext(){
+  if(!isDJ||!currentTrack)return;
+  const i=TRACKS.findIndex(t=>t.id===currentTrack.id);
+  await djPlay(TRACKS[(i+1)%TRACKS.length].id);
+}
+async function djPrev(){
+  if(!isDJ||!currentTrack)return;
+  const i=TRACKS.findIndex(t=>t.id===currentTrack.id);
+  await djPlay(TRACKS[(i-1+TRACKS.length)%TRACKS.length].id);
+}
+
+async function sendReaction(emoji){
+  const rxns=(await Sync.read('reactions'))||{};
+  const id=`r_${Date.now()}_${Math.random().toString(36).slice(2,5)}`;
+  rxns[id]={emoji,id,ts:Date.now(),x:10+Math.random()*80,name:myName};
+  Object.keys(rxns).forEach(k=>{if(Date.now()-rxns[k].ts>5000)delete rxns[k];});
+  await Sync.write('reactions',rxns);
+}
+
+// ━━━ BOOT ━━━
+renderHome();
+</script>
+</body>
 </html>
